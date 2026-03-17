@@ -7,14 +7,6 @@ interface LoginScreenProps {
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 30;
 
-async function sha256(value: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(value);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
 export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -44,35 +36,30 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     }, 1000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLocked || loading) return;
 
     setLoading(true);
     setError(false);
 
-    // Minimum delay um Timing-Angriffe zu erschweren
-    const [userHash, passHash] = await Promise.all([
-      sha256(username),
-      sha256(password),
-      new Promise(r => setTimeout(r, 400)),
-    ]);
+    setTimeout(() => {
+      const validUser = import.meta.env.VITE_APP_USERNAME;
+      const validPass = import.meta.env.VITE_APP_PASSWORD;
 
-    const validUser = import.meta.env.VITE_APP_USERNAME_HASH;
-    const validPass = import.meta.env.VITE_APP_PASSWORD_HASH;
-
-    if (userHash === validUser && passHash === validPass) {
-      sessionStorage.setItem('upa_auth', 'true');
-      onLogin();
-    } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      setError(true);
-      setLoading(false);
-      if (newAttempts >= MAX_ATTEMPTS) {
-        startLockout();
+      if (username === validUser && password === validPass) {
+        sessionStorage.setItem('upa_auth', 'true');
+        onLogin();
+      } else {
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        setError(true);
+        setLoading(false);
+        if (newAttempts >= MAX_ATTEMPTS) {
+          startLockout();
+        }
       }
-    }
+    }, 400);
   };
 
   return (
